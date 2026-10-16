@@ -39,4 +39,6 @@ dotnet build -c Release
 
 ## Releases
 
-Pushing a `v*` tag builds the module and attaches `CheatToggle.zip` to a GitHub release.
+Every push to `main` is built by GitHub Actions; the module is attached to the run as an artifact.
+
+To publish a release, bump `<Version value="vX.Y.Z" />` in `SubModule.xml` and push to `main`. If no release exists for that version yet, CI tags the commit and publishes `CheatToggle.zip`. Pushing a `v*` tag yourself also publishes a release.

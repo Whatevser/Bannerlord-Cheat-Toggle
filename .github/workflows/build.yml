@@ -45,9 +45,31 @@ jobs:
           name: CheatToggle-${{ github.sha }}
           path: out/Modules/
 
-      - name: Release (tags only)
-        if: startsWith(github.ref, 'refs/tags/v')
+      # Release when: a v* tag is pushed, or main gets a SubModule.xml version that has no release yet.
+      - name: Decide release
+        id: rel
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = ([xml](Get-Content SubModule.xml)).Module.Version.value
+          $tag = $version
+          $release = $false
+          if ("${{ github.ref }}".StartsWith("refs/tags/v")) { $tag = "${{ github.ref_name }}"; $release = $true }
+          elseif ("${{ github.event_name }}" -eq "push" -and "${{ github.ref }}" -eq "refs/heads/main") {
+            gh release view $tag -R "${{ github.repository }}" *> $null
+            $release = ($LASTEXITCODE -ne 0)
+          }
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          "release=$($release.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          Write-Output "::notice title=Release::version $version, tag $tag, release=$release"
+
+      - name: Release
+        if: steps.rel.outputs.release == 'true'
         uses: softprops/action-gh-release@v3
         with:
+          tag_name: ${{ steps.rel.outputs.tag }}
+          name: Cheat Toggle ${{ steps.rel.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           files: CheatToggle.zip
           generate_release_notes: true
