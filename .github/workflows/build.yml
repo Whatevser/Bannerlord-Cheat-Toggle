@@ -63,6 +63,7 @@ jobs:
           "tag=$tag" >> $env:GITHUB_OUTPUT
           "release=$($release.ToString().ToLower())" >> $env:GITHUB_OUTPUT
           Write-Output "::notice title=Release::version $version, tag $tag, release=$release"
+          exit 0  # gh's "not found" exit code would otherwise fail the step
 
       - name: Release
         if: steps.rel.outputs.release == 'true'
