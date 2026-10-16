@@ -14,9 +14,9 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 8.0.x
 
@@ -24,19 +24,30 @@ jobs:
       - name: Build
         run: dotnet build -c Release
 
+      - name: Verify module layout
+        shell: pwsh
+        run: |
+          $root = "out/Modules/CheatToggle"
+          $required = "SubModule.xml", "bin/Win64_Shipping_Client/CheatToggle.dll", "bin/Win64_Shipping_Client/CheatToggle.pdb"
+          $missing = $required | Where-Object { -not (Test-Path (Join-Path $root $_)) }
+          $files = Get-ChildItem $root -Recurse -File | ForEach-Object { $_.FullName.Substring((Resolve-Path $root).Path.Length + 1).Replace('\', '/') + " ($($_.Length) B)" }
+          "### Module contents`n" + (($files | ForEach-Object { "- ``$_``" }) -join "`n") | Out-File -Append $env:GITHUB_STEP_SUMMARY
+          if ($missing) { Write-Output "::error::Missing from module: $($missing -join ', ')"; exit 1 }
+          Write-Output "::notice title=Module contents::$($files -join ' | ')"
+
       - name: Zip module
         shell: pwsh
         run: Compress-Archive -Path out/Modules/CheatToggle -DestinationPath CheatToggle.zip
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: CheatToggle-${{ github.sha }}
           path: out/Modules/
 
       - name: Release (tags only)
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: CheatToggle.zip
           generate_release_notes: true
