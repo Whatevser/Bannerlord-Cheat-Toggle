@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Module>
+  <Id value="CheatToggle" />
+  <Name value="Cheat Toggle" />
+  <Version value="v1.1.0" />
+  <DefaultModule value="false" />
+  <ModuleCategory value="Singleplayer" />
+  <ModuleType value="Community" />
+  <DependedModules>
+    <DependedModule Id="Bannerlord.Harmony" />
+    <DependedModule Id="Bannerlord.ButterLib" />
+    <DependedModule Id="Bannerlord.UIExtenderEx" />
+    <DependedModule Id="Bannerlord.MBOptionScreen" />
+    <DependedModule Id="Native" />
+  </DependedModules>
+  <DependedModuleMetadatas>
+    <DependedModuleMetadata id="Bannerlord.Harmony" order="LoadBeforeThis" />
+    <DependedModuleMetadata id="Bannerlord.ButterLib" order="LoadBeforeThis" />
+    <DependedModuleMetadata id="Bannerlord.UIExtenderEx" order="LoadBeforeThis" />
+    <DependedModuleMetadata id="Bannerlord.MBOptionScreen" order="LoadBeforeThis" />
+    <DependedModuleMetadata id="Native" order="LoadBeforeThis" />
+  </DependedModuleMetadatas>
+  <SubModules>
+    <SubModule>
+      <Name value="CheatToggle" />
+      <DLLName value="CheatToggle.dll" />
+      <SubModuleClassType value="CheatToggle.SubModule" />
+      <Tags />
+    </SubModule>
+  </SubModules>
+</Module>

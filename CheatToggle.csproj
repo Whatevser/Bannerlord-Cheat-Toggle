@@ -1,0 +1,75 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>CheatToggle</AssemblyName>
+    <RootNamespace>CheatToggle</RootNamespace>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <DebugType>portable</DebugType>
+    <ModuleId>CheatToggle</ModuleId>
+
+    <!-- Game install. Override: dotnet build -c Release -p:GameFolder="D:\Games\Bannerlord" -->
+    <!-- Otherwise auto-detected from Steam's uninstall entry (app 261550), any library drive -->
+    <GameFolder Condition="'$(GameFolder)' == '' and '$(OS)' == 'Windows_NT'">$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App 261550', 'InstallLocation', null, RegistryView.Registry32, RegistryView.Registry64))</GameFolder>
+    <GameFolder Condition="'$(GameFolder)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Mount &amp; Blade II Bannerlord</GameFolder>
+    <GameFolder>$(GameFolder.TrimEnd('\'))</GameFolder>
+    <!-- Game Pass / Xbox install: -p:GameBinName=Gaming.Desktop.x64_Shipping_Client -->
+    <GameBinName Condition="'$(GameBinName)' == ''">Win64_Shipping_Client</GameBinName>
+    <GameBin>$(GameFolder)\bin\$(GameBinName)</GameBin>
+
+    <!-- Compile against the installed game if present, else BUTR's reference assemblies (CI). -->
+    <UseGameDlls Condition="'$(UseGameDlls)' == '' and Exists('$(GameBin)\TaleWorlds.Library.dll')">true</UseGameDlls>
+    <BannerlordRefVersion Condition="'$(BannerlordRefVersion)' == ''">1.4.8.*</BannerlordRefVersion>
+
+    <!-- Ready-to-ship module layout: out\Modules\CheatToggle\{SubModule.xml, bin\Win64_Shipping_Client\CheatToggle.dll/.pdb} -->
+    <ModuleOut>$(MSBuildProjectDirectory)\out\Modules\$(ModuleId)</ModuleOut>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Lets the plain .NET SDK target net472 without the VS targeting pack -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <!-- Compile-only: the MCM / Harmony mods supply the real DLLs at runtime. Lib.Harmony comes in transitively. -->
+    <PackageReference Include="Bannerlord.MCM" Version="5.12.3" IncludeAssets="compile" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseGameDlls)' == 'true'">
+    <Reference Include="$(GameBin)\TaleWorlds.Library.dll" Private="false" />
+    <Reference Include="$(GameBin)\TaleWorlds.Core.dll" Private="false" />
+    <Reference Include="$(GameBin)\TaleWorlds.Engine.dll" Private="false" />
+    <Reference Include="$(GameBin)\TaleWorlds.InputSystem.dll" Private="false" />
+    <Reference Include="$(GameBin)\TaleWorlds.Localization.dll" Private="false" />
+    <Reference Include="$(GameBin)\TaleWorlds.MountAndBlade.dll" Private="false" />
+    <Reference Include="$(GameBin)\TaleWorlds.ObjectSystem.dll" Private="false" />
+    <Reference Include="$(GameBin)\TaleWorlds.DotNet.dll" Private="false" />
+    <Reference Include="$(GameBin)\TaleWorlds.ModuleManager.dll" Private="false" />
+    <Reference Include="$(GameBin)\TaleWorlds.SaveSystem.dll" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseGameDlls)' != 'true'">
+    <PackageReference Include="Bannerlord.ReferenceAssemblies.Core" Version="$(BannerlordRefVersion)" IncludeAssets="compile" PrivateAssets="all" />
+  </ItemGroup>
+
+  <Target Name="ReportReferences" BeforeTargets="ResolveAssemblyReferences">
+    <Message Importance="high" Condition="'$(UseGameDlls)' == 'true'" Text="Compiling against game DLLs: $(GameBin)" />
+    <Message Importance="high" Condition="'$(UseGameDlls)' != 'true'" Text="Game not found, compiling against Bannerlord.ReferenceAssemblies.Core $(BannerlordRefVersion)" />
+  </Target>
+
+  <!-- Stage only our files (never Harmony/MCM copies) into the module layout -->
+  <Target Name="StageModule" AfterTargets="Build">
+    <RemoveDir Directories="$(ModuleOut)" />
+    <Copy SourceFiles="SubModule.xml" DestinationFolder="$(ModuleOut)" />
+    <Copy SourceFiles="$(TargetPath);$(TargetDir)$(TargetName).pdb" DestinationFolder="$(ModuleOut)\bin\$(GameBinName)" />
+    <Message Importance="high" Text="Module staged: $(ModuleOut)" />
+  </Target>
+
+  <!-- Copy the staged module into the game when it's installed. Skip with -p:Install=false -->
+  <Target Name="InstallModule" AfterTargets="StageModule" Condition="'$(UseGameDlls)' == 'true' and '$(Install)' != 'false'">
+    <ItemGroup>
+      <StagedFiles Include="$(ModuleOut)\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(StagedFiles)" DestinationFiles="@(StagedFiles->'$(GameFolder)\Modules\$(ModuleId)\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Message Importance="high" Text="Installed to $(GameFolder)\Modules\$(ModuleId)" />
+  </Target>
+
+</Project>
